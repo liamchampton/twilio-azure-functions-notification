@@ -17,6 +17,7 @@ type Req struct {
 }
 
 func sendMessage(w http.ResponseWriter, r *http.Request) {
+	// body of request
 	reqBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Fatal(err)
@@ -24,6 +25,7 @@ func sendMessage(w http.ResponseWriter, r *http.Request) {
 
 	jsonData := []byte(reqBody)
 
+	// working with the json data in the body
 	var req Req
 	err2 := json.Unmarshal(jsonData, &req)
 	if err2 != nil {
@@ -32,7 +34,9 @@ func sendMessage(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("Action: " + req.Action)
 
+	// check condition is met to sending an SMS
 	if req.Action == "review_requested" {
+		// set environment vars
 		twilioNumber := os.Getenv("TWILIO_NUMBER")
 		recipientNumber := os.Getenv("RECIPIENT_NUMBER")
 
@@ -44,11 +48,13 @@ func sendMessage(w http.ResponseWriter, r *http.Request) {
 			Password: authToken,
 		})
 
+		// build request
 		params := &openapi.CreateMessageParams{}
 		params.SetTo(recipientNumber)
 		params.SetFrom(twilioNumber)
 		params.SetBody("You have a new GitHub notification! You have been requested to review a Pull Request.")
 
+		// send request
 		resp, err := client.Api.CreateMessage(params)
 		if err != nil {
 			fmt.Println(err.Error())
@@ -64,12 +70,13 @@ func sendMessage(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-
+	// create server
 	listenAddr := ":8080"
 	if val, ok := os.LookupEnv("FUNCTIONS_CUSTOMHANDLER_PORT"); ok {
 		listenAddr = ":" + val
 	}
 
+	// create route
 	http.HandleFunc("/api/twilionotification", sendMessage)
 	log.Printf("About to listen on %s. Go to https://127.0.0.1%s/", listenAddr, listenAddr)
 	log.Fatal(http.ListenAndServe(listenAddr, nil))
